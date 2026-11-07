@@ -1,0 +1,57 @@
+= GraalVM Native Build Tools `javaLauncher` reproducer
+:issue-url: https://github.com/graalvm/native-build-tools/issues/1071
+:docs-url: https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html#configuration-toolchains-explicit
+
+Minimal reproducer for {issue-url}[graalvm/native-build-tools#1071]: _Invalid `javaLauncher` configuration in docs_.
+
+== Problem
+
+The {docs-url}[Gradle plugin documentation] shows the following syntax to set an explicit toolchain for a native binary:
+
+[source,groovy]
+----
+graalvmNative {
+    binaries {
+        main {
+            javaLauncher = javaToolchains.launcherFor {
+                languageVersion = JavaLanguageVersion.of(25)
+                nativeImageCapable = true
+            }
+        }
+    }
+}
+----
+
+With the Groovy DSL this fails during configuration with:
+
+----
+class jdk.proxy1.$Proxy78 cannot be cast to class org.gradle.api.internal.provider.support.LazyGroovySupport (...)
+----
+
+Using the explicit `set(...)` call works:
+
+[source,groovy]
+----
+javaLauncher.set(javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(25)
+    nativeImageCapable = true
+})
+----
+
+== Environment
+
+* Gradle 9.9.0 (wrapper; also seen with 9.4.1)
+* `org.graalvm.buildtools.native` plugin 1.1.18
+* GraalVM 25.0.2 (graalce)
+* Linux
+
+== Reproducing
+
+The `build.gradle` contains both variants. The working one (`javaLauncher.set(...)`) is enabled by default:
+
+[source,shell]
+----
+./gradlew nativeCompile
+----
+
+To reproduce the failure, in `build.gradle` comment out the `javaLauncher.set(...)` block, uncomment the `javaLauncher = ...` block, and run the same command again.
